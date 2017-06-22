@@ -2,7 +2,8 @@
 
 #define BUFFER_SIZE (1024 * 30)
 
-static int copy_socket(SOCKET fd1, SOCKET fd2, void* buf, int size)
+/*
+static int copy_socket(int fd1, int fd2, void* buf, int size)
 {
     int rlen = 0, wlen = 0, len = 0;
     rlen = recv(fd1, buf, size, 0);
@@ -21,3 +22,4 @@ static int copy_socket(SOCKET fd1, SOCKET fd2, void* buf, int size)
 
     return wlen;
 }
+*/
