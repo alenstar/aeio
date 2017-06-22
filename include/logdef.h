@@ -17,6 +17,7 @@
 #define LOGI(fmt, ...) do{printf("%s(%3d) [I]: " fmt "\n", __FILENAME__, __LINE__, ##__VA_ARGS__);}while(0)
 #endif 
 
+#ifdef ANDROID
 #if 0
 #define LOG_TAG  "clog"
 #include <android/log.h>
@@ -29,6 +30,7 @@
 #define LOGE(...)  ((void)0)
 #define LOGW(...)  ((void)0)
 #define LOGI(...)  ((void)0)
+#endif
 #endif
 #endif
 
