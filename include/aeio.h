@@ -3,8 +3,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 #include "ae.h"
 #include "anet.h"
+#include "common.h"
+void unlinkFileEvent(aeEventLoop *loop, int fd);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,5 @@
 #include "common.h"
-
+#include "ae.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
@@ -100,5 +100,22 @@ long long ustime(void) {
 /* Return the UNIX time in milliseconds */
 mstime_t mstime(void) {
     return ustime()/1000;
+}
+
+/* Remove the specified client from global lists where the client could
+ * be referenced, not including the Pub/Sub channels.
+ * This is used by freeClient() and replicationCacheMaster(). */
+void unlinkFileEvent(aeEventLoop *loop, int fd) {
+
+    /* Certain operations must be done only if the client has an active socket.
+     * If the client was already unlinked or if it's a "fake client" the
+     * fd is already set to -1. */
+    if (fd != -1) {
+        /* Unregister async I/O handlers and close the socket. */
+        aeDeleteFileEvent(loop, fd, AE_READABLE);
+        aeDeleteFileEvent(loop, fd, AE_WRITABLE);
+        close(fd);
+        fd = -1;
+    }
 }
 
