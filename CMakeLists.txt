@@ -54,6 +54,7 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release)
 #set(ly_lib_name "yuv")
 #add_subdirectory(ext/uWebSockets)
 #add_subdirectory(ext/libyuv)
+include_directories(src)
 include_directories(include)
 add_subdirectory(src)
 

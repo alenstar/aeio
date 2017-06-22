@@ -5,6 +5,7 @@
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #if 1 //def DEBUG
+#if 1
 #define LOGD(fmt, ...) do{printf("%s(%3d) [D]: " fmt "\n", __FILENAME__, __LINE__, ##__VA_ARGS__);}while(0)
 #define LOGE(fmt, ...) do{printf("%s(%3d) [E]: " fmt "\n", __FILENAME__, __LINE__, ##__VA_ARGS__);}while(0)
 #define LOGW(fmt, ...) do{printf("%s(%3d) [W]: " fmt "\n", __FILENAME__, __LINE__, ##__VA_ARGS__);}while(0)
