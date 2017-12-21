@@ -10,7 +10,7 @@ else()
 endif()
 
 include_directories(./)
-set(TIO_SRC ae.c adlist.c anet.c zmalloc.c common.c)
+set(TIO_SRC ae.c adlist.c anet.c zmalloc.c common.c lfq.c)
 #add_executable(tio main.c ${TIO_SRC})#add_executable(test_zlib zlib_test.c message_zlib.c)
 add_library(aeio STATIC ${TIO_SRC})#add_executable(test_zlib zlib_test.c message_zlib.c)
 

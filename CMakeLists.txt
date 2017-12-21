@@ -59,10 +59,10 @@ include_directories(include)
 add_subdirectory(src)
 
 add_executable(example1 example1.c)
-target_link_libraries(example1 aeio)
+target_link_libraries(example1 aeio pthread)
 
 add_executable(example2 example2.c)
-target_link_libraries(example2 aeio)
+target_link_libraries(example2 aeio pthread)
 
 # used by doc home and in packaging
 set(README_FILE ${PROJECT_SOURCE_DIR}/README.md)

@@ -4,6 +4,8 @@
 #include <errno.h>
 #include <logdef.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 /* Anti-warning macro... */
 #define UNUSED(V) ((void)V)

@@ -4,6 +4,13 @@
 #include <errno.h>
 #include <logdef.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <arpa/inet.h>
+
+#include <lfq.h>
 
 /* Anti-warning macro... */
 #define UNUSED(V) ((void)V)
@@ -11,6 +18,84 @@
 #define NET_PEER_ID_LEN (NET_IP_STR_LEN + 32) /* Must be enough for ip:port */
 
 static char neterr[ANET_ERR_LEN] = {0x00};
+
+typedef struct {
+    struct lfq_ctx mq;
+    int port;
+    int fd;
+} io_ctx_t;
+
+int tcp_server(int* port) {
+    int sock = -1;
+    struct sockaddr_in server;
+    //Create socket
+    sock = socket(AF_INET , SOCK_STREAM , 0);
+    if (sock == -1) {
+        perror("Could not create socket");
+        return -1;
+    }
+    // setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+
+    //Prepare the sockaddr_in structure
+    server.sin_family = AF_INET;
+    // server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_port = htons(0);
+
+    //Bind
+    if( bind(sock,(struct sockaddr *)&server , sizeof(server)) < 0) {
+        //print the error message
+        perror("bind failed. Error");
+        close(sock);
+        return -1;
+    }
+
+    //Listen
+    if(listen(sock, 1) < 0) {
+        close(sock);
+        return -1;
+    }
+    socklen_t len = sizeof(server);
+    if (getsockname(sock, (struct sockaddr*) &server, &len) != 0) {
+        perror("getsockname()");
+        return -1;
+    }
+    *port = ntohs(server.sin_port);
+
+    return sock;
+}
+int tcp_client(int port) {
+    int sock;
+    struct sockaddr_in server;
+    //Create socket
+    sock = socket(AF_INET , SOCK_STREAM , 0);
+    if (sock == -1) {
+        perror("Could not create socket");
+        return -1;
+    }
+
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons( port);
+
+    //Connect to remote server
+    if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0){
+        perror("connect failed. Error");
+        return -1;
+    }
+    return sock;
+}
+
+pthread_t thread_create(void*(*fn)(void*), void* args, int detach) {
+    pthread_t t;
+    if(pthread_create(&t, NULL, fn, args) != 0){
+        return -1;
+    }
+    if(detach) {
+        pthread_detach(t);
+    }
+    return t;
+}
 
 void onevent(int fd, void *data, int mask) {
     LOGD("onevent: %d", fd);
@@ -55,7 +140,7 @@ void readQueryFromClient(aeEventLoop *loop, int fd, void *privdata, int mask) {
         unlinkFileEvent(loop, fd);
         return;
     }
-    write(fd, buf, nread);
+    // write(fd, buf, nread);
     LOGD("readQueryFromClient:%d", nread);
 }
 
@@ -77,7 +162,7 @@ static void acceptCommonHandler(aeEventLoop *loop, int fd, int flags,
             LOGE("not create file event");
             return;
         }
-        write(fd, "hello world !", 14);
+        // write(fd, "hello world !", 14);
     }
 }
 
@@ -100,14 +185,50 @@ void onaccept(aeEventLoop *loop, int fd, void *privdata, int mask) {
     }
 }
 
+void io_ctx_deinit(io_ctx_t* ctx) {
+    lfq_clean(&ctx->mq);
+}
+int io_ctx_init(io_ctx_t* ctx) {
+    lfq_init(&ctx->mq, 4);
+    return 0;
+}
+int io_notify(io_ctx_t* ctx, char code){
+    int n = write(ctx->fd, &code, 1);
+    if (n != 1) {
+        perror("write failed");
+        return -1;
+    }
+    return 0;
+}
+void* notify_init(void* args) {
+    io_ctx_t* ctx= (io_ctx_t*)args;
+    int fd = tcp_client(ctx->port);
+    ctx->fd = fd;
+    if (fd < 0) {
+        LOGD("tcp_client connect failed");
+        return NULL;
+    }
+
+    for(;;) {
+        if (io_notify(ctx, 1) != 0){
+            perror("write failed");
+            break;
+        }
+        usleep(10);
+    }
+
+    return NULL;
+}
+
 int main(int argc, const char **argv) {
+    io_ctx_t ctx;
     aeEventLoop *loop = aeCreateEventLoop(64);
     if (!loop) {
         LOGE("aeCreateEventLoop failure");
         return 1;
     }
     char neterr[ANET_ERR_LEN] = {0x00};
-    int sfd = anetTcpServer(neterr, 8888, NULL, 4);
+    int sfd = anetTcpServer(neterr, 8888, "127.0.0.1", 4);
     if (sfd != ANET_ERR) {
         anetNonBlock(NULL, sfd);
         if (aeCreateFileEvent(loop, sfd, AE_READABLE, onaccept, NULL)) {
@@ -116,6 +237,20 @@ int main(int argc, const char **argv) {
     } else if (errno == EAFNOSUPPORT) {
         LOGE("Not listening to IPv4: unsupported");
     }
+
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    if (getsockname(sfd, (struct sockaddr*) &addr, &len) != 0) {
+        perror("getsockname()");
+        return -1;
+    }
+    ctx.port = ntohs(addr.sin_port);
+    if(thread_create(notify_init, &ctx, 1) == -1) {
+        aeDeleteEventLoop(loop);
+        LOGD("thread_create failed");
+        return -1;
+    }
+
     aeMain(loop);
 
     aeDeleteEventLoop(loop);
