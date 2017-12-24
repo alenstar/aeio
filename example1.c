@@ -228,7 +228,7 @@ int main(int argc, const char **argv) {
         return 1;
     }
     char neterr[ANET_ERR_LEN] = {0x00};
-    int sfd = anetTcpServer(neterr, 8888, "127.0.0.1", 4);
+    int sfd = anetTcpServer(neterr, 0, "127.0.0.1", 1);
     if (sfd != ANET_ERR) {
         anetNonBlock(NULL, sfd);
         if (aeCreateFileEvent(loop, sfd, AE_READABLE, onaccept, NULL)) {
